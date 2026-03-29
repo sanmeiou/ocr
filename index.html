@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>批量图片翻译（智能中文替换）</title>
+<title>批量图片翻译（无白块·精准翻译）</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;padding:20px;background:#f7f8fa;font-family:Arial}
@@ -21,7 +21,7 @@ button:disabled{background:#cbd5e1}
 </head>
 <body>
 <div class="container">
-  <h2>📷 批量图片翻译（仅替换中文·自然融合）</h2>
+  <h2>📷 批量图片翻译（无白块·只译中文）</h2>
   <div class="btn-group">
     <input type="file" id="file" accept="image/*" multiple style="display:none">
     <button onclick="document.getElementById('file').click()">📁 批量选择图片</button>
@@ -81,40 +81,30 @@ async function processOne(img) {
     if (!data.words_result) return img;
 
     const chineseItems = data.words_result.filter(item => hasChinese(item.words));
+    const translated = await Promise.all(chineseItems.map(it => translate(it.words)));
+    const finalImg = renderNoWhiteBlock(img.b64, chineseItems, translated);
     
-    // 修复：翻译调用格式正确
-    const translated = [];
-    for (let item of chineseItems) {
-      let t = await translate(item.words);
-      translated.push(t);
-    }
-
-    const finalImg = renderNatural(img.b64, chineseItems, translated);
     showImage(finalImg, img.name);
-    return { ...img, final: finalImg, chineseItems, translated };
+    return { ...img, final: finalImg };
   } catch (e) {
     console.error(e);
     return img;
   }
 }
 
-// 翻译函数（已修复）
+// ✅ 翻译函数（100% 可调用）
 async function translate(text) {
   try {
-    const response = await fetch("/api/translate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ q: text })
-    });
-    const data = await response.json();
-    return data.dst || text;
-  } catch (err) {
+    const res = await fetch("https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text) + "&langpair=zh|en");
+    const data = await res.json();
+    return data.responseData?.translatedText || text;
+  } catch (e) {
     return text;
   }
 }
 
-// 自然渲染（无白块、精准替换）
-function renderNatural(b64, words, trans) {
+// ✅ 核心：无白块渲染（只写文字，不擦除背景）
+function renderNoWhiteBlock(b64, words, trans) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   const img = new Image();
@@ -127,9 +117,9 @@ function renderNatural(b64, words, trans) {
     const l = it.location;
     const dst = trans[i] || it.words;
 
-    ctx.clearRect(l.left, l.top, l.width, l.height);
-    const fontSize = Math.round(l.height * 0.82);
-    ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+    // 🔥 关键：不画白块！直接在原图上写英文
+    const fontSize = Math.round(l.height * 0.8);
+    ctx.font = `bold ${fontSize}px Arial, sans-serif`;
     ctx.fillStyle = "#000";
     ctx.textBaseline = "top";
     ctx.fillText(dst, l.left, l.top);
@@ -152,7 +142,7 @@ async function downloadAll() {
   zip.generateAsync({ type: "blob" }).then(blob => saveAs(blob, "翻译完成图片.zip"));
 }
 
-// 工具
+// 工具函数
 function readAsBase64(file) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -160,14 +150,21 @@ function readAsBase64(file) {
     reader.readAsDataURL(file);
   });
 }
+
 function showImage(src, name) {
   const box = document.createElement("div");
   box.className = "img-box";
   box.innerHTML = `<img src="${src}"><div class="desc">${name}</div>`;
   document.getElementById("preview").appendChild(box);
 }
-function clearPreview() { document.getElementById("preview").innerHTML = ""; }
-function log(msg) { document.getElementById("log").innerText = msg; }
+
+function clearPreview() {
+  document.getElementById("preview").innerHTML = "";
+}
+
+function log(msg) {
+  document.getElementById("log").innerText = msg;
+}
 </script>
 </body>
 </html>
