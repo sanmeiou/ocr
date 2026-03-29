@@ -41,7 +41,6 @@ let images = [];
 let processedImages = [];
 const downloadBtn = document.getElementById("downloadBtn");
 
-// 批量选择图片
 document.getElementById("file").onchange = async (e) => {
   const files = Array.from(e.target.files);
   if (!files.length) return;
@@ -54,7 +53,6 @@ document.getElementById("file").onchange = async (e) => {
   log(`已选择 ${images.length} 张图片`);
 };
 
-// 批量处理
 async function startBatch() {
   if (!images.length) { alert("请先选择图片"); return; }
   downloadBtn.disabled = true; processedImages = []; clearPreview();
@@ -69,7 +67,6 @@ async function startBatch() {
   downloadBtn.disabled = false;
 }
 
-// 单张处理
 async function processOne(img) {
   try {
     const token = await (await fetch("/api/token")).text();
@@ -83,11 +80,15 @@ async function processOne(img) {
     const data = await ocrRes.json();
     if (!data.words_result) return img;
 
-    // 只保留包含中文的行
     const chineseItems = data.words_result.filter(item => hasChinese(item.words));
-    const translated = await Promise.all(chineseItems.map(it => translate(it.words)));
+    
+    // 修复：翻译调用格式正确
+    const translated = [];
+    for (let item of chineseItems) {
+      let t = await translate(item.words);
+      translated.push(t);
+    }
 
-    // 智能渲染：只替换中文，自然融入原图
     const finalImg = renderNatural(img.b64, chineseItems, translated);
     showImage(finalImg, img.name);
     return { ...img, final: finalImg, chineseItems, translated };
@@ -97,23 +98,22 @@ async function processOne(img) {
   }
 }
 
-// 翻译接口
+// 翻译函数（已修复）
 async function translate(text) {
   try {
-    const r = await fetch("/api/translate", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    const response = await fetch("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ q: text })
     });
-    const d = await r.json();
-    return d.dst || text;
-  } catch {
+    const data = await response.json();
+    return data.dst || text;
+  } catch (err) {
     return text;
   }
 }
 
-// ==============================
-// 核心：自然融合渲染（无白块、只替换中文）
-// ==============================
+// 自然渲染（无白块、精准替换）
 function renderNatural(b64, words, trans) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -127,29 +127,23 @@ function renderNatural(b64, words, trans) {
     const l = it.location;
     const dst = trans[i] || it.words;
 
-    // 极轻微擦除（不出现白块）
     ctx.clearRect(l.left, l.top, l.width, l.height);
-
-    // 自动匹配字号：按区域高度计算
     const fontSize = Math.round(l.height * 0.82);
-    ctx.font = `500 ${fontSize}px Arial, "Microsoft YaHei", sans-serif`;
+    ctx.font = `500 ${fontSize}px Arial, sans-serif`;
     ctx.fillStyle = "#000";
     ctx.textBaseline = "top";
-    ctx.textAlign = "left";
-
-    // 原位置写入
     ctx.fillText(dst, l.left, l.top);
   });
 
   return canvas.toDataURL("image/png");
 }
 
-// 判断是否含中文（只翻译中文）
+// 只识别中文
 function hasChinese(str) {
   return /[\u4e00-\u9fa5]/.test(str);
 }
 
-// 批量下载 ZIP
+// 批量下载
 async function downloadAll() {
   const zip = new JSZip();
   processedImages.forEach((img, i) => {
@@ -158,7 +152,7 @@ async function downloadAll() {
   zip.generateAsync({ type: "blob" }).then(blob => saveAs(blob, "翻译完成图片.zip"));
 }
 
-// 工具函数
+// 工具
 function readAsBase64(file) {
   return new Promise(resolve => {
     const reader = new FileReader();
@@ -166,21 +160,14 @@ function readAsBase64(file) {
     reader.readAsDataURL(file);
   });
 }
-
 function showImage(src, name) {
   const box = document.createElement("div");
   box.className = "img-box";
   box.innerHTML = `<img src="${src}"><div class="desc">${name}</div>`;
   document.getElementById("preview").appendChild(box);
 }
-
-function clearPreview() {
-  document.getElementById("preview").innerHTML = "";
-}
-
-function log(msg) {
-  document.getElementById("log").innerText = msg;
-}
+function clearPreview() { document.getElementById("preview").innerHTML = ""; }
+function log(msg) { document.getElementById("log").innerText = msg; }
 </script>
 </body>
 </html>
