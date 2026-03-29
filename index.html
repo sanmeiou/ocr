@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>OCR图片文字识别</title>
+<style>
+body{padding:30px;background:#f5f5f5;font-family:Arial}
+.main{max-width:600px;margin:0 auto;background:white;padding:20px;border-radius:10px}
+button{background:#0070f3;color:white;border:none;padding:12px 20px;width:100%;border-radius:8px;font-size:16px;margin:10px 0;cursor:pointer}
+#result{background:#f8f9fa;padding:15px;border-radius:8px;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+</style>
+</head>
+<body>
+<div class="main">
+  <h2>图片文字识别工具</h2>
+  <input type="file" id="file" accept="image/*">
+  <button onclick="start()">开始识别</button>
+  <div id="result"></div>
+</div>
+
+<script>
+let imgB64 = "";
+document.getElementById("file").onchange = e => {
+  const f = e.target.files[0];
+  const r = new FileReader();
+  r.onload = () => imgB64 = r.result;
+  r.readAsDataURL(f);
+};
+
+async function start() {
+  if (!imgB64) return alert("请选图片");
+  document.getElementById("result").innerText = "识别中...";
+
+  const token = await (await fetch("/api/token")).text();
+  const form = new URLSearchParams();
+  form.append("image", imgB64.split(",")[1]);
+  form.append("language_type", "CHN_ENG");
+
+  const res = await fetch("https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token="+token, {
+    method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"},
+    body:form
+  });
+  const data = await res.json();
+
+  let txt = "识别结果：\n";
+  data.words_result.forEach(it => txt += it.words + "\n");
+  document.getElementById("result").innerText = txt;
+}
+</script>
+</body>
+</html>
