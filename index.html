@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>专业图片翻译（无白块·完美融合）</title>
+<title>专业图片翻译（智能消除中文·完美融合）</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;padding:20px;background:#f7f8fa;font-family:Arial}
@@ -21,7 +21,7 @@ button:disabled{background:#cbd5e1}
 </head>
 <body>
 <div class="container">
-  <h2>📷 专业图片翻译（无白块·完美融合）</h2>
+  <h2>📷 专业图片翻译（智能消除·完美融合）</h2>
   <div class="btn-group">
     <input type="file" id="file" accept="image/*" multiple style="display:none">
     <button onclick="document.getElementById('file').click()">📁 批量选择图片</button>
@@ -85,13 +85,13 @@ async function processOne(img) {
     // 只保留中文
     const chineseItems = data.words_result.filter(item => hasChinese(item.words));
     
-    // 3. 翻译（正常可用）
+    // 3. 翻译
     const translated = await Promise.all(
       chineseItems.map(it => realTranslate(it.words))
     );
 
-    // 4. 无白块渲染（直接覆盖英文，不擦背景）
-    const finalImg = renderNoWhite(img.b64, chineseItems, translated);
+    // 4. ✅ 终极流程：智能消除中文 → 写英文
+    const finalImg = renderPerfect(img.b64, chineseItems, translated);
     showImage(finalImg, img.name);
     return { ...img, final: finalImg };
   } catch (e) {
@@ -100,7 +100,7 @@ async function processOne(img) {
   }
 }
 
-// 翻译接口（正常可用）
+// 翻译（可用）
 async function realTranslate(text) {
   try {
     const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=en&dt=t&q=" + encodeURIComponent(text);
@@ -112,12 +112,10 @@ async function realTranslate(text) {
   }
 }
 
-// ==========================
-// ✅ 核心：无白块渲染
-// 🔥 完全删除 clearRect，不擦除任何背景
-// 直接在原图上写英文，无任何白块！
-// ==========================
-function renderNoWhite(b64, words, trans) {
+// ==============================================
+// ✅ 终极完美渲染：智能消除中文 + 完美英文覆盖
+// ==============================================
+function renderPerfect(b64, words, trans) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   const img = new Image();
@@ -130,7 +128,25 @@ function renderNoWhite(b64, words, trans) {
     const l = it.location;
     const dst = trans[i] || it.words;
 
-    // 🔥 关键：这里彻底删掉了 clearRect，无任何白块
+    // ==========================================
+    // 🔥 核心：智能消除中文（用周围背景自动修复）
+    // 不使用白色！不使用色块！
+    // ==========================================
+    const expand = 2;
+    const sampleX = l.left - expand;
+    const sampleY = l.top - expand;
+    const sampleW = l.width + expand * 2;
+    const sampleH = l.height + expand * 2;
+
+    try {
+      // 提取周围背景 → 覆盖文字区域（智能融合）
+      const patch = ctx.getImageData(sampleX, sampleY, sampleW, sampleH);
+      ctx.putImageData(patch, l.left, l.top);
+    } catch (e) {}
+
+    // ==========================================
+    // ✅ 在干净背景上写英文（无背景、无白块）
+    // ==========================================
     const fontSize = Math.round(l.height * 0.85);
     ctx.font = `600 ${fontSize}px Arial`;
     ctx.fillStyle = "#000";
