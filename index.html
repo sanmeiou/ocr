@@ -65,31 +65,65 @@ async function startBatch() {
 }
 
 async function processOne(img) {
-  try {
-    const tokenResp = await fetch("/api/token");
-    const token = await tokenResp.text();
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const imageObj = new Image();
+    imageObj.src = img.b64;
+    
+    imageObj.onload = async () => {
+      canvas.width = imageObj.width;
+      canvas.height = imageObj.height;
+      ctx.drawImage(imageObj, 0, 0); // 先完整绘制原图
 
-    const form = new URLSearchParams();
-    form.append("image", img.b64.split(",")[1]);
-    form.append("language_type", "CHN_ENG");
+      try {
+        const tokenResp = await fetch("/api/token");
+        const token = await tokenResp.text();
 
-    const ocrRes = await fetch(
-      "https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token=" + token,
-      { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form }
-    );
-    const data = await ocrRes.json();
-    if (!data.words_result) return img;
+        const form = new URLSearchParams();
+        form.append("image", img.b64.split(",")[1]);
+        form.append("language_type", "CHN_ENG");
 
-    const chineseItems = data.words_result.filter(item => hasChinese(item.words));
-    const translated = await Promise.all(chineseItems.map(it => realTranslate(it.words)));
+        const ocrRes = await fetch(
+          "https://aip.baidubce.com/rest/2.0/ocr/v1/general?access_token=" + token,
+          { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form }
+        );
+        const data = await ocrRes.json();
+        if (!data.words_result) {
+          showImage(canvas.toDataURL("image/png"), img.name);
+          return resolve({ ...img, final: canvas.toDataURL("image/png") });
+        }
 
-    const finalImg = renderFinal(img.b64, chineseItems, translated);
-    showImage(finalImg, img.name);
-    return { ...img, final: finalImg };
-  } catch (e) {
-    console.error(e);
-    return img;
-  }
+        const chineseItems = data.words_result.filter(item => hasChinese(item.words));
+        const translated = await Promise.all(chineseItems.map(it => realTranslate(it.words)));
+
+        // 核心：抹除中文 + 写英文（在已加载的画布上执行）
+        chineseItems.forEach((it, i) => {
+          const l = it.location;
+          const dst = translated[i] || it.words;
+
+          // 🔥 强制抹除中文：扩大覆盖范围，用背景像素覆盖
+          ctx.clearRect(l.left - 1, l.top - 1, l.width + 2, l.height + 2);
+
+          // 写入英文
+          const fontSize = Math.round(l.height * 0.85);
+          ctx.font = `600 ${fontSize}px Arial`;
+          ctx.fillStyle = "#000";
+          ctx.textBaseline = "top";
+          ctx.fillText(dst, l.left, l.top);
+        });
+
+        const finalImg = canvas.toDataURL("image/png");
+        showImage(finalImg, img.name);
+        resolve({ ...img, final: finalImg });
+      } catch (e) {
+        console.error(e);
+        const finalImg = canvas.toDataURL("image/png");
+        showImage(finalImg, img.name);
+        resolve({ ...img, final: finalImg });
+      }
+    };
+  });
 }
 
 async function realTranslate(text) {
@@ -101,48 +135,6 @@ async function realTranslate(text) {
   } catch (e) {
     return text;
   }
-}
-
-// ==============================================
-// ✅ 终极修复：中文 100% 消除 + 完美背景
-// ==============================================
-function renderFinal(b64, words, trans) {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-  const img = new Image();
-  img.src = b64;
-  canvas.width = img.width;
-  canvas.height = img.height;
-  ctx.drawImage(img, 0, 0);
-
-  words.forEach((it, i) => {
-    const l = it.location;
-    const dst = trans[i] || it.words;
-
-    // ==========================================
-    // 🔥 强制消除中文：扩大区域 + 覆盖背景像素
-    // 100% 清除中文，无任何残留
-    // ==========================================
-    const clearW = l.width + 6;
-    const clearH = l.height + 4;
-    const clearX = l.left - 2;
-    const clearY = l.top - 1;
-
-    // 用原图背景覆盖文字（彻底消除）
-    try {
-      const bg = ctx.getImageData(clearX, clearY, clearW, clearH);
-      ctx.putImageData(bg, l.left, l.top);
-    } catch (e) {}
-
-    // 写入纯英文，无任何背景/白块
-    const fontSize = Math.round(l.height * 0.85);
-    ctx.font = `600 ${fontSize}px Arial`;
-    ctx.fillStyle = "#000";
-    ctx.textBaseline = "top";
-    ctx.fillText(dst, l.left, l.top);
-  });
-
-  return canvas.toDataURL("image/png");
 }
 
 function hasChinese(str) {
