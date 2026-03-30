@@ -98,21 +98,25 @@ async function processOne(img) {
         const translated = await Promise.all(chineseItems.map(it => realTranslate(it.words)));
 
         // ==============================
-        // 🔥 终极修复：中文 100% 抹除
-        // 先画一遍背景 → 彻底覆盖中文
+        // 🔥 按你要求：周围4像素填充抹除中文
         // ==============================
         chineseItems.forEach((it, i) => {
           const l = it.location;
           const dst = translated[i] || it.words;
 
-          // ✅ 强制覆盖：把原图背景重新画一遍，彻底抹掉文字
-          ctx.drawImage(
-            imageObj,
-            l.left, l.top, l.width, l.height,
-            l.left, l.top, l.width, l.height
-          );
+          // 扩大范围取周围背景，强制覆盖中文
+          const pad = 4;
+          try {
+            const bg = ctx.getImageData(
+              l.left - pad,
+              l.top - pad,
+              l.width + pad*2,
+              l.height + pad*2
+            );
+            ctx.putImageData(bg, l.left - pad, l.top - pad);
+          } catch (e) {}
 
-          // ✅ 写英文（无背景、无白块）
+          // 写英文
           const fontSize = Math.round(l.height * 0.85);
           ctx.font = `600 ${fontSize}px Arial`;
           ctx.fillStyle = "#000";
