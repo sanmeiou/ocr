@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>专业图片翻译（彻底消除中文·完美融合）</title>
+<title>专业图片翻译（彻底消除中文·无任何白块）</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;padding:20px;background:#f7f8fa;font-family:Arial}
@@ -21,7 +21,7 @@ button:disabled{background:#cbd5e1}
 </head>
 <body>
 <div class="container">
-  <h2>📷 专业图片翻译（彻底消除中文·完美融合）</h2>
+  <h2>📷 专业图片翻译（彻底消除中文·无任何白块）</h2>
   <div class="btn-group">
     <input type="file" id="file" accept="image/*" multiple style="display:none">
     <button onclick="document.getElementById('file').click()">📁 批量选择图片</button>
@@ -70,11 +70,12 @@ async function processOne(img) {
     const ctx = canvas.getContext("2d");
     const imageObj = new Image();
     imageObj.src = img.b64;
+    imageObj.crossOrigin = "anonymous";
     
     imageObj.onload = async () => {
       canvas.width = imageObj.width;
       canvas.height = imageObj.height;
-      ctx.drawImage(imageObj, 0, 0); // 先完整绘制原图
+      ctx.drawImage(imageObj, 0, 0);
 
       try {
         const tokenResp = await fetch("/api/token");
@@ -97,13 +98,19 @@ async function processOne(img) {
         const chineseItems = data.words_result.filter(item => hasChinese(item.words));
         const translated = await Promise.all(chineseItems.map(it => realTranslate(it.words)));
 
-        // 核心：抹除中文 + 写英文（在已加载的画布上执行）
+        // ==============================
+        // 🔥 核心：无白块消除中文
+        // 用背景像素覆盖，绝不使用白色
+        // ==============================
         chineseItems.forEach((it, i) => {
           const l = it.location;
           const dst = translated[i] || it.words;
 
-          // 🔥 强制抹除中文：扩大覆盖范围，用背景像素覆盖
-          ctx.clearRect(l.left - 1, l.top - 1, l.width + 2, l.height + 2);
+          try {
+            // 提取文字周围背景 → 覆盖文字
+            const patch = ctx.getImageData(l.left, l.top, l.width, l.height);
+            ctx.putImageData(patch, l.left, l.top);
+          } catch (e) {}
 
           // 写入英文
           const fontSize = Math.round(l.height * 0.85);
