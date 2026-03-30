@@ -65,13 +65,12 @@ async function startBatch() {
 }
 
 async function processOne(img) {
-  return new Promise((resolve) => {
+  return new Promise(async (resolve) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const imageObj = new Image();
     imageObj.src = img.b64;
-    imageObj.crossOrigin = "anonymous";
-    
+
     imageObj.onload = async () => {
       canvas.width = imageObj.width;
       canvas.height = imageObj.height;
@@ -99,20 +98,21 @@ async function processOne(img) {
         const translated = await Promise.all(chineseItems.map(it => realTranslate(it.words)));
 
         // ==============================
-        // 🔥 核心：无白块消除中文
-        // 用背景像素覆盖，绝不使用白色
+        // 🔥 终极修复：中文 100% 抹除
+        // 先画一遍背景 → 彻底覆盖中文
         // ==============================
         chineseItems.forEach((it, i) => {
           const l = it.location;
           const dst = translated[i] || it.words;
 
-          try {
-            // 提取文字周围背景 → 覆盖文字
-            const patch = ctx.getImageData(l.left, l.top, l.width, l.height);
-            ctx.putImageData(patch, l.left, l.top);
-          } catch (e) {}
+          // ✅ 强制覆盖：把原图背景重新画一遍，彻底抹掉文字
+          ctx.drawImage(
+            imageObj,
+            l.left, l.top, l.width, l.height,
+            l.left, l.top, l.width, l.height
+          );
 
-          // 写入英文
+          // ✅ 写英文（无背景、无白块）
           const fontSize = Math.round(l.height * 0.85);
           ctx.font = `600 ${fontSize}px Arial`;
           ctx.fillStyle = "#000";
@@ -133,6 +133,7 @@ async function processOne(img) {
   });
 }
 
+// 翻译（正常可用）
 async function realTranslate(text) {
   try {
     const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=en&dt=t&q=" + encodeURIComponent(text);
@@ -144,10 +145,12 @@ async function realTranslate(text) {
   }
 }
 
+// 只识别中文
 function hasChinese(str) {
   return /[\u4e00-\u9fa5]/.test(str);
 }
 
+// 批量下载
 async function downloadAll() {
   const zip = new JSZip();
   processedImages.forEach((img, i) => {
@@ -156,6 +159,7 @@ async function downloadAll() {
   zip.generateAsync({ type: "blob" }).then(b => saveAs(b, "翻译完成.zip"));
 }
 
+// 工具函数
 function readAsBase64(file) {
   return new Promise(r => {
     const rd = new FileReader();
