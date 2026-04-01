@@ -2,32 +2,32 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>专业图片翻译（彻底抹除·稳健版）</title>
+    <title>专业图片翻译（邻近纹理仿制版）</title>
     <style>
         *{box-sizing:border-box}
-        body{margin:0;padding:20px;background:#f4f7f6;font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif}
-        .container{max-width:1100px;margin:0 auto;background:#fff;border-radius:12px;padding:30px;box-shadow:0 5px 25px rgba(0,0,0,0.07)}
-        h2{margin-top:0;color:#111;display:flex;align-items:center;gap:10px;font-size:22px}
+        body{margin:0;padding:20px;background:#f0f2f5;font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif}
+        .container{max-width:1100px;margin:0 auto;background:#fff;border-radius:16px;padding:30px;box-shadow:0 10px 30px rgba(0,0,0,0.08)}
+        h2{margin-top:0;color:#111;display:flex;align-items:center;gap:12px;font-size:24px}
         h2 span{color:#0070f3;font-weight:bold}
-        .btn-group{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid #eee}
+        .btn-group{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:25px;padding-bottom:20px;border-bottom:1px solid #eee}
         input[type="file"]{display:none}
-        .btn{padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;border:none;display:inline-flex;align-items:center;gap:8px}
+        .btn{padding:12px 24px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;border:none;display:inline-flex;align-items:center;gap:8px}
         .btn-primary{background:#0070f3;color:#fff}
-        .btn-primary:hover{background:#0061d1;transform:translateY(-1px)}
+        .btn-primary:hover{background:#0061d1;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,112,243,0.3)}
         .btn-success{background:#28a745;color:#fff}
-        .btn-success:hover{background:#218838;transform:translateY(-1px)}
-        .btn:disabled{background:#cbd5e1;cursor:not-allowed;transform:none}
-        #result-status{background:#e8f0fe;padding:15px;border-left:4px solid #1a73e8;border-radius:4px;margin-bottom:15px;font-size:14px;color:#1967d2}
+        .btn-success:hover{background:#218838;transform:translateY(-1px);box-shadow:0 4px 12px rgba(40,167,69,0.3)}
+        .btn:disabled{background:#cbd5e1;cursor:not-allowed;transform:none;box-shadow:none}
+        #result-status{background:#e6f7ff;padding:15px;border-left:5px solid #1890ff;border-radius:8px;margin-bottom:20px;font-size:15px;color:#004085;font-weight:500}
         #preview{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-        .img-box{position:relative;border:1px solid #eaeaea;border-radius:10px;overflow:hidden;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.03)}
+        .img-box{position:relative;border:1px solid #e8e8e8;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 15px rgba(0,0,0,0.05)}
         .img-box img{width:100%;display:block;height:auto}
-        .desc{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.7);color:#fff;padding:8px;font-size:12px;text-align:center}
-        #log-area{margin-top:20px;font-family:monospace;font-size:12px;color:#666;max-height:100px;overflow-y:auto;background:#fafafa;padding:10px;border-radius:6px;border:1px solid #eee}
+        .desc{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.75);color:#fff;padding:8px;font-size:13px;text-align:center;backdrop-filter:blur(4px)}
+        #log-area{margin-top:20px;font-family:monospace;font-size:12px;color:#555;max-height:120px;overflow-y:auto;background:#f8f9fa;padding:15px;border-radius:8px;border:1px solid #eee}
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>📷 专业图片翻译 <span>（彻底抹除·稳健版）</span></h2>
+    <h2>📷 专业图片翻译 <span>（邻近纹理仿制版）</span></h2>
     <div class="btn-group">
         <input type="file" id="file" accept="image/*" multiple>
         <button class="btn btn-primary" onclick="document.getElementById('file').click()">📁 批量选择图片</button>
@@ -63,23 +63,18 @@ document.getElementById("file").onchange = async (e) => {
 
 async function startBatch() {
     if (!images.length) { alert("请先选择图片"); return; }
-    startBtn.disabled = true;
-    startBtn.innerText = '正在处理...';
-    processedImages = [];
-    document.getElementById("preview").innerHTML = "";
+    startBtn.disabled = true; startBtn.innerText = '正在智能融合...';
+    processedImages = []; document.getElementById("preview").innerHTML = "";
     for (const img of images) {
         addLog(`正在处理: ${img.name}...`);
         const res = await processOne(img);
         processedImages.push(res);
     }
-    document.getElementById("result-status").innerHTML = "✅ <b>翻译完成！</b>";
+    document.getElementById("result-status").innerHTML = "✅ <b>翻译及背景纹理融合完成！</b>";
     addLog("全部任务执行完毕");
-    downloadBtn.disabled = false;
-    startBtn.disabled = false;
-    startBtn.innerText = '🚀 开始翻译';
+    downloadBtn.disabled = false; startBtn.disabled = false; startBtn.innerText = '🚀 开始翻译';
 }
 
-// 核心处理函数：彻底抹除与稳健填充
 async function processOne(img) {
     return new Promise((resolve) => {
         const canvas = document.createElement("canvas");
@@ -88,12 +83,14 @@ async function processOne(img) {
         imageObj.src = img.b64;
         
         imageObj.onload = async () => {
-            canvas.width = imageObj.width;
-            canvas.height = imageObj.height;
+            const W = imageObj.width;
+            const H = imageObj.height;
+            canvas.width = W;
+            canvas.height = H;
             ctx.drawImage(imageObj, 0, 0);
 
             try {
-                // 1. 获取 Token (调用你已解决的 API)
+                // 1. 获取 Token
                 const tokenResp = await fetch("/api/token");
                 const token = await tokenResp.text();
 
@@ -111,73 +108,98 @@ async function processOne(img) {
                 if (data.words_result) {
                     const items = data.words_result;
                     for (const item of items) {
-                        // 仅处理包含中文的文本块
                         if (/[\u4e00-\u9fa5]/.test(item.words)) {
-                            // 翻译
                             const transText = await realTranslate(item.words);
                             const l = item.location;
 
-                            // ====== [V4 核心：彻底抹除算法] ======
+                            // ====== [V5 核心：邻近纹理仿制算法] ======
                             
-                            // 1. 定义扩展采样边界（向外扩展2px，捕捉纯净背景）
-                            const ext = 2; 
-                            const samplePoints = [
-                                { x: Math.max(0, l.left - ext), y: Math.max(0, l.top - ext) }, // 左上
-                                { x: Math.min(canvas.width - 1, l.left + l.width + ext), y: Math.max(0, l.top - ext) }, // 右上
-                                { x: Math.max(0, l.left - ext), y: Math.min(canvas.height - 1, l.top + l.height + ext) }, // 左下
-                                { x: Math.min(canvas.width - 1, l.left + l.width + ext), y: Math.min(canvas.height - 1, l.top + l.height + ext) } // 右下
-                            ];
+                            // 1. 定义采样扩展距离 (px)，用于抓取文字周围的纯净背景
+                            const sExt = 5; 
+                            const target = {
+                                x: l.left, y: l.top, w: l.width, h: l.height
+                            };
 
-                            // 2. 多点采样并计算平均色
-                            let rSum = 0, gSum = 0, bSum = 0;
-                            for (const pt of samplePoints) {
-                                const pixel = ctx.getImageData(pt.x, pt.y, 1, 1).data;
-                                rSum += pixel[0]; gSum += pixel[1]; bSum += pixel[2];
+                            // 创建一个临时补丁画布，用于合成无痕背景
+                            const patchCanvas = document.createElement('canvas');
+                            patchCanvas.width = target.w;
+                            patchCanvas.height = target.h;
+                            const pCtx = patchCanvas.getContext('2d');
+
+                            // 2. 多方向纹理拉伸与混合
+                            // 策略：将文字框四周的背景像素向内拉伸覆盖文字
+                            
+                            pCtx.save();
+                            // 设置混合模式，让多层拉伸柔和过渡
+                            pCtx.globalCompositeOperation = 'source-over';
+                            
+                            // A. 从上方拉伸纹理向下
+                            const srcTop = { x: target.x, y: Math.max(0, target.y - sExt), w: target.w, h: sExt };
+                            if(srcTop.h > 0) {
+                                pCtx.globalAlpha = 1.0; // 第一层完全不透明
+                                pCtx.drawImage(canvas, srcTop.x, srcTop.y, srcTop.w, srcTop.h, 0, 0, target.w, target.h);
                             }
-                            const avgR = Math.round(rSum / 4);
-                            const avgG = Math.round(gSum / 4);
-                            const avgB = Math.round(bSum / 4);
-                            const avgColor = `rgb(${avgR},${avgG},${avgB})`;
 
-                            // 3. 【关键】物理强制抹除：使用纯色全填充，不留任何透明度
-                            ctx.fillStyle = avgColor;
-                            // 填充范围稍微扩大1px，确保覆盖干净
-                            ctx.fillRect(l.left - 1, l.top - 1, l.width + 2, l.height + 2);
+                            // B. 从下方拉伸纹理向上
+                            const srcBottom = { x: target.x, y: Math.min(H - sExt, target.y + target.h), w: target.w, h: sExt };
+                            if(srcBottom.y < H) {
+                                pCtx.globalAlpha = 0.5; // 混合透明度
+                                pCtx.drawImage(canvas, srcBottom.x, srcBottom.y, srcBottom.w, srcBottom.h, 0, 0, target.w, target.h);
+                            }
+
+                            // C. 从左侧拉伸纹理向右
+                            const srcLeft = { x: Math.max(0, target.x - sExt), y: target.y, w: sExt, h: target.h };
+                            if(srcLeft.w > 0) {
+                                pCtx.globalAlpha = 0.33;
+                                pCtx.drawImage(canvas, srcLeft.x, srcLeft.y, srcLeft.w, srcLeft.h, 0, 0, target.w, target.h);
+                            }
+
+                            // D. 从右侧拉伸纹理向左
+                            const srcRight = { x: Math.min(W - sExt, target.x + target.w), y: target.y, w: sExt, h: target.h };
+                            if(srcRight.x < W) {
+                                pCtx.globalAlpha = 0.25;
+                                pCtx.drawImage(canvas, srcRight.x, srcRight.y, srcRight.w, srcRight.h, 0, 0, target.w, target.h);
+                            }
+                            pCtx.restore();
+
+                            // 3. 【关键】彻底抹除：将合成好的纹理补丁贴回原图，不留透明度
+                            // 稍微扩大1px消除OCR框边界残留
+                            ctx.drawImage(patchCanvas, target.x - 1, target.y - 1, target.w + 2, target.h + 2);
 
                             // ====== [背景融合结束，开始绘制文字] ======
 
-                            // 4. 计算采样色的感知亮度
-                            const brightness = (avgR * 299 + avgG * 587 + avgB * 114) / 1000;
+                            // 4. 智能文字颜色 (采集补丁中心点的亮度)
+                            const centerPixel = pCtx.getImageData(target.w / 2, target.h / 2, 1, 1).data;
+                            const brightness = (centerPixel[0] * 299 + centerPixel[1] * 587 + centerPixel[2] * 114) / 1000;
                             
-                            // 5. 设置文字样式：自适应黑白
-                            if (brightness > 125) {
+                            if (brightness > 128) {
                                 ctx.fillStyle = "#000000"; // 浅色背景用黑字
-                                ctx.strokeStyle = "rgba(255,255,255,0.5)"; // 增加轻微白色描边提高清晰度
+                                ctx.strokeStyle = "rgba(255,255,255,0.4)"; // 白色轻微描边
                             } else {
                                 ctx.fillStyle = "#ffffff"; // 深色背景用白字
-                                ctx.strokeStyle = "rgba(0,0,0,0.5)"; // 增加轻微黑色描边
+                                ctx.strokeStyle = "rgba(0,0,0,0.4)"; // 黑色轻微描边
                             }
 
-                            // 6. 动态字号与自动缩放
-                            let fontSize = Math.round(l.height * 0.85);
-                            if (fontSize < 10) fontSize = 10; // 保证最小可读性
+                            // 5. 动态字号与自适应缩放
+                            let fontSize = Math.round(target.h * 0.82);
+                            if (fontSize < 10) fontSize = 10;
                             
-                            ctx.font = `bold ${fontSize}px 'PingFang SC', Arial`;
+                            ctx.font = `bold ${fontSize}px 'PingFang SC', 'Microsoft YaHei', Arial`;
                             let metrics = ctx.measureText(transText);
                             
-                            // 如果翻译后太长，自动缩小字号直到塞进宽度
-                            while (metrics.width > l.width && fontSize > 8) {
+                            while (metrics.width > target.w && fontSize > 8) {
                                 fontSize--;
                                 ctx.font = `bold ${fontSize}px 'PingFang SC', Arial`;
                                 metrics = ctx.measureText(transText);
                             }
 
                             ctx.textBaseline = "middle";
-                            ctx.lineWidth = 2; // 描边宽度
+                            ctx.lineWidth = 2.5; // 描边宽度
+                            ctx.lineJoin = "round"; // 描边更圆润
                             
-                            // 7. 绘制文字（先描边再填充，效果最好）
-                            ctx.strokeText(transText, l.left, l.top + l.height / 2);
-                            ctx.fillText(transText, l.left, l.top + l.height / 2);
+                            // 先描边再填充
+                            ctx.strokeText(transText, target.x, target.y + target.h / 2);
+                            ctx.fillText(transText, target.x, target.y + target.h / 2);
                         }
                     }
                 }
@@ -211,11 +233,11 @@ async function downloadAll() {
     const zip = new JSZip();
     processedImages.forEach((img, i) => {
         if (img.final) {
-            const fileName = `Trans_${img.name.split('.')[0]}.png`;
+            const fileName = `Seamless_${img.name.split('.')[0]}.png`;
             zip.file(fileName, img.final.split(",")[1], { base64: true });
         }
     });
-    zip.generateAsync({ type: "blob" }).then(b => saveAs(b, "翻译图片包.zip"));
+    zip.generateAsync({ type: "blob" }).then(b => saveAs(b, "专业翻译无痕包.zip"));
 }
 
 function readAsBase64(file) {
